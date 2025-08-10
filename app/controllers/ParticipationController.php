@@ -6,15 +6,20 @@ class ParticipationController extends Controller
 
     public function __construct()
     {
+        $this->requireRole(['admin', 'organizer', 'participant']);
         $this->model = new Participation();
     }
 
+    // 📋 Lister toutes les participations
     public function index()
     {
         $participations = $this->model->getAll();
-        $this->view('admin/participations/index', ['participations' => $participations]);
+        $this->view('admin/participations/index', [
+            'participations' => $participations
+        ]);
     }
 
+    // ➕ Ajouter une participation
     public function create()
     {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -24,15 +29,15 @@ class ParticipationController extends Controller
                 'status' => $_POST['status']
             ];
 
-            $success = $this->model->create($data);
-
-            if (!$success) {
-                $_SESSION['flash']['error'] = "❌ Cette participation existe déjà.";
+            // Vérifier si la participation existe déjà
+            if ($this->model->getByUserAndEvent($data['user_id'], $data['event_id'])) {
+                $_SESSION['flash']['error'] = "⚠️ Cette participation existe déjà.";
                 header('Location: ' . BASE_URL . '/participation/create');
                 exit;
             }
 
-            $_SESSION['flash']['success'] = "✅ Participation ajoutée avec succès.";
+            $this->model->create($data);
+            $_SESSION['flash']['success'] = "✅ Participation ajoutée.";
             header('Location: ' . BASE_URL . '/participation/index');
             exit;
         }
@@ -46,26 +51,30 @@ class ParticipationController extends Controller
         ]);
     }
 
+    // ✏️ Modifier le statut
     public function edit($id)
     {
         $participation = $this->model->getById($id);
 
         if (!$participation) {
-            $_SESSION['flash']['error'] = "❌ Participation introuvable.";
+            $_SESSION['flash']['error'] = "Participation introuvable.";
             header('Location: ' . BASE_URL . '/participation/index');
             exit;
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->model->update($id, $_POST['status']);
-            $_SESSION['flash']['success'] = "✅ Statut mis à jour.";
+            $_SESSION['flash']['success'] = "✅ Participation modifiée.";
             header('Location: ' . BASE_URL . '/participation/index');
             exit;
         }
 
-        $this->view('admin/participations/edit', ['participation' => $participation]);
+        $this->view('admin/participations/edit', [
+            'participation' => $participation
+        ]);
     }
 
+    // 🗑 Supprimer
     public function delete($id)
     {
         $this->model->delete($id);

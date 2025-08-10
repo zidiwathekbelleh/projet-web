@@ -1,31 +1,37 @@
 <?php
+// app/core/Router.php
 
 class Router
 {
     public function dispatch()
     {
-        $url = $_GET['url'] ?? 'user/index';
+        // récupérer url
+        $url = '';
+        if (!empty($_GET['url'])) {
+            $url = trim($_GET['url'], '/');
+        } else {
+            // optionnel : route par défaut
+            $url = 'auth/login';
+        }
 
-        $url = rtrim($url, '/');
-        $url = filter_var($url, FILTER_SANITIZE_URL);
         $segments = explode('/', $url);
 
-        $controllerName = ucfirst($segments[0]) . 'Controller';
-        $method = $segments[1] ?? 'index';
+        $controllerName = !empty($segments[0]) ? ucfirst($segments[0]) . 'Controller' : 'HomeController';
+        $action = $segments[1] ?? 'index';
         $params = array_slice($segments, 2);
 
-        if (class_exists($controllerName)) {
-            $controller = new $controllerName();
-
-            if (method_exists($controller, $method)) {
-                call_user_func_array([$controller, $method], $params);
-            } else {
-                http_response_code(404);
-                echo "Méthode <b>$method()</b> introuvable dans <b>$controllerName</b>.";
-            }
-        } else {
-            http_response_code(404);
-            echo "Contrôleur <b>$controllerName</b> introuvable.";
+        if (!class_exists($controllerName)) {
+            // essayer de charger la classe (autoload fait cela habituellement)
+            throw new Exception("Contrôleur introuvable : $controllerName");
         }
+
+        $controller = new $controllerName();
+
+        if (!method_exists($controller, $action)) {
+            throw new Exception("Action introuvable : $action dans $controllerName");
+        }
+
+        // appeler l'action avec paramètres
+        call_user_func_array([$controller, $action], $params);
     }
 }

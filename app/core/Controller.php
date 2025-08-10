@@ -2,26 +2,68 @@
 
 class Controller
 {
-    // Méthode pour afficher une vue
-    protected function view($view, $data = [])
+    /**
+     * Affiche une vue avec header/footer automatiquement
+     */
+    public function render($view, $data = [])
     {
         extract($data);
-        require_once APP . '/views/' . $view . '.php';
-    }
 
-    // ➕ Messages flash : succès, erreur, etc.
-    protected function setFlash($key, $message)
-    {
-        $_SESSION['flash'][$key] = $message;
-    }
-
-    protected function getFlash($key)
-    {
-        if (!empty($_SESSION['flash'][$key])) {
-            $msg = $_SESSION['flash'][$key];
-            unset($_SESSION['flash'][$key]);
-            return $msg;
+        // Si la vue existe
+        $viewFile = APP . '/views/' . $view . '.php';
+        if (file_exists($viewFile)) {
+            require APP . '/views/partials/header.php';
+            require $viewFile;
+            require APP . '/views/partials/footer.php';
+        } else {
+            throw new Exception("Vue introuvable : $viewFile");
         }
-        return null;
+    }
+
+    /**
+     * Alias pour compatibilité avec anciens contrôleurs
+     */
+    public function view($view, $data = [])
+    {
+        $this->render($view, $data);
+    }
+
+    /**
+     * Redirection vers une URL
+     */
+    public function redirect($url)
+    {
+        header("Location: " . BASE_URL . '/' . $url);
+        exit;
+    }
+
+    /**
+     * Restriction par rôle
+     * @param array|string $roles
+     */
+    public function requireRole($roles)
+    {
+        if (!isset($_SESSION['user'])) {
+            $_SESSION['flash_error'] = "Vous devez être connecté.";
+            $this->redirect('auth/login');
+        }
+
+        $userRole = $_SESSION['user']['role'] ?? '';
+
+        // Convertir string en tableau
+        if (!is_array($roles)) {
+            $roles = [$roles];
+        }
+
+        // superadmin peut tout faire
+        if ($userRole === 'superadmin') {
+            return;
+        }
+
+        // Vérifie si le rôle est autorisé
+        if (!in_array($userRole, $roles)) {
+            $_SESSION['flash_error'] = "Accès refusé.";
+            $this->redirect('home/index');
+        }
     }
 }
