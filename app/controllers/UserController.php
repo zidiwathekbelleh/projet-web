@@ -1,48 +1,51 @@
 <?php
+require_once dirname(__DIR__) . '/models/User.php';
+
 class UserController extends Controller
 {
-    public function __construct()
-    {
+    private User $userModel;
+
+    public function __construct() {
         $this->requireRole(['superadmin', 'admin']);
+        $this->userModel = new User();
     }
 
-    public function index()
-    {
-        $userModel = new User();
-        $users = $userModel->getAll();
-        $this->render('admin/users/index', ['users' => $users]);
+    // 🔹 Liste des utilisateurs
+    public function index() {
+        $users = $this->userModel->getAll();
+        $this->view('admin/users/index', ['users' => $users]);
     }
 
-    public function create()
-    {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $userModel = new User();
-            $userModel->create($_POST);
-            header('Location: ' . BASE_URL . '/user/index');
-            exit;
+    // 🔹 Formulaire création
+    public function create() {
+        $this->view('admin/users/create');
+    }
+
+    // 🔹 Enregistrement nouvel utilisateur
+    public function store() {
+        if ($_POST) {
+            $this->userModel->create($_POST);
+            $this->redirect('user/index'); // <-- corrigé
         }
-        $this->render('admin/users/create');
     }
 
-    public function edit($id)
-    {
-        $userModel = new User();
-        $user = $userModel->getById($id);
+    // 🔹 Formulaire édition
+    public function edit(int $id) {
+        $user = $this->userModel->getById($id);
+        $this->view('admin/users/edit', ['user' => $user]);
+    }
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $userModel->update($id, $_POST);
-            header('Location: ' . BASE_URL . '/user/index');
-            exit;
+    // 🔹 Mettre à jour utilisateur
+    public function update(int $id) {
+        if ($_POST) {
+            $this->userModel->update($id, $_POST);
+            $this->redirect('user/index'); // <-- corrigé
         }
-
-        $this->render('admin/users/edit', ['user' => $user]);
     }
 
-    public function delete($id)
-    {
-        $userModel = new User();
-        $userModel->delete($id);
-        header('Location: ' . BASE_URL . '/user/index');
-        exit;
+    // 🔹 Supprimer utilisateur
+    public function delete(int $id) {
+        $this->userModel->delete($id);
+        $this->redirect('user/index'); // <-- corrigé
     }
 }

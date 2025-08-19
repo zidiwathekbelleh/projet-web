@@ -1,81 +1,64 @@
 <?php
-
 class EventController extends Controller
 {
-    private $eventModel;
+    private Event $eventModel;
 
     public function __construct()
     {
         $this->requireRole(['superadmin', 'admin', 'organizer']);
         $this->eventModel = new Event();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
     }
 
-    // 📌 Liste des événements
+    // Liste des événements
     public function index()
     {
         $events = $this->eventModel->getAll();
-        $this->render('admin/events/index', ['events' => $events]);
+        $this->view('admin/events/index', ['events' => $events]);
     }
 
-    // 📌 Formulaire de création
+    // Formulaire création
     public function create()
     {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'title' => trim($_POST['title']),
-                'description' => trim($_POST['description']),
-                'start_date' => $_POST['start_date'],
-                'end_date' => $_POST['end_date'],
-                'location' => trim($_POST['location']),
-                'max_participants' => $_POST['max_participants'],
-                'created_by' => $_SESSION['user']['id']
-            ];
+        $this->view('admin/events/create');
+    }
 
-            if ($this->eventModel->create($data)) {
-                $this->redirect('event/index');
-            } else {
-                $error = "Erreur lors de la création de l'événement.";
-                $this->render('admin/events/create', ['error' => $error]);
-            }
-        } else {
-            $this->render('admin/events/create');
+    // Enregistrement nouvel événement
+    public function store()
+    {
+        if ($_POST) {
+            $data = $_POST;
+            $data['created_by'] = $_SESSION['user']['id']; // ID utilisateur connecté
+            $this->eventModel->create($data);
+            header('Location: ' . BASE_URL . '/event/index');
+            exit;
         }
     }
 
-    // 📌 Édition d’un événement
+    // Formulaire édition
     public function edit($id)
     {
-        $event = $this->eventModel->getById($id);
+        $event = $this->eventModel->getById((int)$id);
+        $this->view('admin/events/edit', ['event' => $event]);
+    }
 
-        if (!$event) {
-            $this->redirect('event/index');
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $data = [
-                'title' => trim($_POST['title']),
-                'description' => trim($_POST['description']),
-                'start_date' => $_POST['start_date'],
-                'end_date' => $_POST['end_date'],
-                'location' => trim($_POST['location']),
-                'max_participants' => $_POST['max_participants']
-            ];
-
-            if ($this->eventModel->update($id, $data)) {
-                $this->redirect('event/index');
-            } else {
-                $error = "Erreur lors de la mise à jour.";
-                $this->render('admin/events/edit', ['event' => $event, 'error' => $error]);
-            }
-        } else {
-            $this->render('admin/events/edit', ['event' => $event]);
+    // Mettre à jour événement
+    public function update($id)
+    {
+        if ($_POST) {
+            $this->eventModel->update((int)$id, $_POST);
+            header('Location: ' . BASE_URL . '/event/index');
+            exit;
         }
     }
 
-    // 📌 Suppression d’un événement
+    // Supprimer événement
     public function delete($id)
     {
-        $this->eventModel->delete($id);
-        $this->redirect('event/index');
+        $this->eventModel->delete((int)$id);
+        header('Location: ' . BASE_URL . '/event/index');
+        exit;
     }
 }

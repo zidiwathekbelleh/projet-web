@@ -3,7 +3,7 @@
 <div class="container mt-5">
     <h2>Ajouter un utilisateur</h2>
 
-    <form method="POST" action="<?= BASE_URL ?>/user/create" class="mt-4">
+    <form method="POST" action="<?= BASE_URL ?>/user/store" class="mt-4">
         <div class="mb-3">
             <label for="full_name" class="form-label">Nom complet</label>
             <input type="text" name="full_name" id="full_name" class="form-control" required>

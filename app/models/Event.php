@@ -1,50 +1,76 @@
 <?php
+require_once APP . '/core/Model.php';
 
 class Event extends Model
 {
-    public function getAll()
+    /**
+     * Obtenir tous les événements
+     * @return array
+     */
+    public function getAll(): array
     {
-        $stmt = $this->db->query("SELECT e.*, u.full_name AS organizer FROM events e JOIN users u ON e.created_by = u.id");
+        $stmt = $this->db->query("SELECT e.*, u.full_name AS creator_name 
+                                  FROM events e 
+                                  LEFT JOIN users u ON e.created_by = u.id
+                                  ORDER BY e.start_date DESC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getById($id)
+    /**
+     * Obtenir un événement par ID
+     */
+    public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM events WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $this->db->prepare("SELECT * FROM events WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $event = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $event ?: null;
     }
 
-    public function create($data)
+    /**
+     * Créer un événement
+     */
+    public function create(array $data): bool
     {
-        $stmt = $this->db->prepare("
-            INSERT INTO events (title, description, start_date, end_date, location, max_participants, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
+        $stmt = $this->db->prepare(
+            "INSERT INTO events (title, description, start_date, end_date, location, created_by)
+             VALUES (:title, :description, :start_date, :end_date, :location, :created_by)"
+        );
         return $stmt->execute([
-            $data['title'], $data['description'], $data['start_date'],
-            $data['end_date'], $data['location'], $data['max_participants'],
-            $data['created_by']
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'location' => $data['location'],
+            'created_by' => $data['created_by'] // Doit être l'ID utilisateur connecté
         ]);
     }
 
-    public function update($id, $data)
+    /**
+     * Mettre à jour un événement
+     */
+    public function update(int $id, array $data): bool
     {
-        $stmt = $this->db->prepare("
-            UPDATE events SET title = ?, description = ?, start_date = ?, end_date = ?,
-            location = ?, max_participants = ?
-            WHERE id = ?
-        ");
+        $stmt = $this->db->prepare(
+            "UPDATE events SET title = :title, description = :description, start_date = :start_date, 
+             end_date = :end_date, location = :location WHERE id = :id"
+        );
         return $stmt->execute([
-            $data['title'], $data['description'], $data['start_date'],
-            $data['end_date'], $data['location'], $data['max_participants'],
-            $id
+            'title' => $data['title'],
+            'description' => $data['description'],
+            'start_date' => $data['start_date'],
+            'end_date' => $data['end_date'],
+            'location' => $data['location'],
+            'id' => $id
         ]);
     }
 
-    public function delete($id)
+    /**
+     * Supprimer un événement
+     */
+    public function delete(int $id): bool
     {
-        $stmt = $this->db->prepare("DELETE FROM events WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->db->prepare("DELETE FROM events WHERE id = :id");
+        return $stmt->execute(['id' => $id]);
     }
 }

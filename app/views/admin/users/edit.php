@@ -10,7 +10,7 @@
     <div class="container mt-5">
         <h2>Modifier l'utilisateur</h2>
 
-        <form method="POST" action="<?= BASE_URL ?>/user/edit/<?= $user['id']; ?>" class="mt-4">
+        <form method="POST" action="<?= BASE_URL ?>/user/update/<?= $user['id']; ?>" class="mt-4">
 
             <div class="mb-3">
                 <label for="full_name" class="form-label">Nom complet</label>

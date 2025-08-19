@@ -1,112 +1,64 @@
 <?php
+require_once dirname(__DIR__) . '/core/Model.php';
 
 class Participation extends Model
 {
-    /**
-     * 📋 Obtenir toutes les participations avec noms utilisateur et titre événement
-     */
-    public function getAll()
+    protected string $table = 'participations';
+
+    public function getAll(): array
     {
-        $stmt = $this->db->query("
-            SELECT p.*, u.full_name AS user_name, e.title AS event_title
-            FROM participations p
-            JOIN users u ON p.user_id = u.id
-            JOIN events e ON p.event_id = e.id
-            ORDER BY p.registration_date DESC
-        ");
+        $stmt = $this->db->query("SELECT p.*, u.full_name AS user_name, e.title AS event_title
+                                  FROM participations p
+                                  JOIN users u ON p.user_id = u.id
+                                  JOIN events e ON p.event_id = e.id
+                                  ORDER BY p.id DESC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * 🔍 Récupérer une participation par ID
-     */
-    public function getById($id)
+    public function getById(int $id): ?array
     {
-        $stmt = $this->db->prepare("
-            SELECT p.*, u.full_name AS user_name, e.title AS event_title
-            FROM participations p
-            JOIN users u ON p.user_id = u.id
-            JOIN events e ON p.event_id = e.id
-            WHERE p.id = ?
-        ");
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt = $this->db->prepare("SELECT * FROM participations WHERE id = :id");
+        $stmt->execute(['id' => $id]);
+        $data = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $data ?: null;
     }
 
-    /**
-     * 🛡 Vérifier si une participation existe déjà (éviter doublons)
-     */
-    public function getByUserAndEvent($userId, $eventId)
+    public function create(array $data): void
     {
-        $stmt = $this->db->prepare("
-            SELECT * FROM participations
-            WHERE user_id = ? AND event_id = ?
-        ");
-        $stmt->execute([$userId, $eventId]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    /**
-     * ➕ Créer une nouvelle participation
-     */
-    public function create($data)
-    {
-        $stmt = $this->db->prepare("
-            INSERT INTO participations (user_id, event_id, status)
-            VALUES (?, ?, ?)
-        ");
-        return $stmt->execute([
-            $data['user_id'],
-            $data['event_id'],
-            $data['status']
+        $stmt = $this->db->prepare("INSERT INTO participations (user_id, event_id, status) VALUES (:user_id, :event_id, :status)");
+        $stmt->execute([
+            'user_id' => $data['user_id'],
+            'event_id' => $data['event_id'],
+            'status' => $data['status'],
         ]);
     }
 
-    /**
-     * ✏️ Mettre à jour le statut
-     */
-    public function update($id, $status)
+    public function update(int $id, array $data): void
     {
-        $stmt = $this->db->prepare("
-            UPDATE participations 
-            SET status = ?, registration_date = NOW()
-            WHERE id = ?
-        ");
-        return $stmt->execute([$status, $id]);
+        $stmt = $this->db->prepare("UPDATE participations SET user_id=:user_id, event_id=:event_id, status=:status WHERE id=:id");
+        $stmt->execute([
+            'id' => $id,
+            'user_id' => $data['user_id'],
+            'event_id' => $data['event_id'],
+            'status' => $data['status'],
+        ]);
     }
 
-    /**
-     * 🗑 Supprimer une participation
-     */
-    public function delete($id)
+    public function delete(int $id): void
     {
-        $stmt = $this->db->prepare("DELETE FROM participations WHERE id = ?");
-        return $stmt->execute([$id]);
+        $stmt = $this->db->prepare("DELETE FROM participations WHERE id=:id");
+        $stmt->execute(['id' => $id]);
     }
 
-    /**
-     * 📋 Obtenir tous les utilisateurs (pour menus déroulants)
-     */
-    public function getAllUsers()
+    public function getUsers(): array
     {
-        $stmt = $this->db->query("
-            SELECT id, full_name 
-            FROM users 
-            ORDER BY full_name ASC
-        ");
+        $stmt = $this->db->query("SELECT id, full_name FROM users ORDER BY full_name");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * 📋 Obtenir tous les événements (pour menus déroulants)
-     */
-    public function getAllEvents()
+    public function getEvents(): array
     {
-        $stmt = $this->db->query("
-            SELECT id, title 
-            FROM events 
-            ORDER BY start_date DESC
-        ");
+        $stmt = $this->db->query("SELECT id, title FROM events ORDER BY start_date DESC");
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
