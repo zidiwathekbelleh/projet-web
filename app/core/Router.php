@@ -5,33 +5,48 @@ class Router
 {
     public function dispatch()
     {
-        // récupérer url
-        $url = '';
-        if (!empty($_GET['url'])) {
-            $url = trim($_GET['url'], '/');
-        } else {
-            // optionnel : route par défaut
-            $url = 'auth/login';
-        }
-
+        // Récupérer l'URL depuis la query string
+        $url = !empty($_GET['url']) ? trim($_GET['url'], '/') : 'auth/login';
         $segments = explode('/', $url);
 
-        $controllerName = !empty($segments[0]) ? ucfirst($segments[0]) . 'Controller' : 'HomeController';
+        // Mapping URL → contrôleur
+        $controllerMap = [
+            'participations' => 'ParticipationController',
+            // tu peux ajouter d'autres mappings si besoin
+        ];
+
+        $controllerKey = $segments[0] ?? 'home';
+        $controllerName = $controllerMap[$controllerKey] ?? ucfirst($controllerKey) . 'Controller';
+
+        // Méthode / action
         $action = $segments[1] ?? 'index';
+
+        // Paramètres à passer à la méthode
         $params = array_slice($segments, 2);
 
+        // Vérifier que le contrôleur existe
         if (!class_exists($controllerName)) {
-            // essayer de charger la classe (autoload fait cela habituellement)
-            throw new Exception("Contrôleur introuvable : $controllerName");
+            http_response_code(404);
+            die("Contrôleur introuvable : $controllerName");
         }
 
         $controller = new $controllerName();
 
+        // Vérifier que la méthode existe
         if (!method_exists($controller, $action)) {
-            throw new Exception("Action introuvable : $action dans $controllerName");
+            http_response_code(404);
+            die("Action introuvable : $action dans $controllerName");
         }
 
-        // appeler l'action avec paramètres
-        call_user_func_array([$controller, $action], $params);
+        // Appeler la méthode avec les paramètres
+        try {
+            call_user_func_array([$controller, $action], $params);
+        } catch (ArgumentCountError $e) {
+            http_response_code(400);
+            die("Erreur : paramètres manquants pour $controllerName::$action");
+        } catch (Exception $e) {
+            http_response_code(500);
+            die("Erreur serveur : " . $e->getMessage());
+        }
     }
 }
