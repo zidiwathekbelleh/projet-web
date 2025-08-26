@@ -1,5 +1,8 @@
 <?php
 require_once APP . '/core/Model.php';
+require_once dirname(__DIR__, 2) . '/vendor/autoload.php'; // Composer Autoload
+
+use Dompdf\Dompdf;
 
 class Event extends Model
 {
@@ -42,7 +45,7 @@ class Event extends Model
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
             'location' => $data['location'],
-            'created_by' => $data['created_by'] // Doit être l'ID utilisateur connecté
+            'created_by' => $data['created_by']
         ]);
     }
 
@@ -72,5 +75,71 @@ class Event extends Model
     {
         $stmt = $this->db->prepare("DELETE FROM events WHERE id = :id");
         return $stmt->execute(['id' => $id]);
+    }
+
+    /**
+     * Exporter tous les événements en PDF avec Dompdf
+     */
+    public function exportPdf()
+    {
+        $events = $this->getAll();
+
+        $html = '<h1 style="text-align: center; color: #4e73df;">Liste des événements</h1>';
+        $html .= '<table border="1" cellpadding="5" cellspacing="0" style="width: 100%; border-collapse: collapse;">';
+        $html .= '<tr style="background-color: #4e73df; color: white;">
+                    <th>ID</th><th>Titre</th><th>Date début</th><th>Date fin</th><th>Lieu</th><th>Créateur</th>
+                  </tr>';
+
+        foreach ($events as $e) {
+            $html .= '<tr>';
+            $html .= '<td>' . $e['id'] . '</td>';
+            $html .= '<td>' . htmlspecialchars($e['title']) . '</td>';
+            $html .= '<td>' . $e['start_date'] . '</td>';
+            $html .= '<td>' . $e['end_date'] . '</td>';
+            $html .= '<td>' . htmlspecialchars($e['location']) . '</td>';
+            $html .= '<td>' . htmlspecialchars($e['creator_name']) . '</td>';
+            $html .= '</tr>';
+        }
+
+        $html .= '</table>';
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+        $dompdf->stream('evenements.pdf', ['Attachment' => false]);
+        exit;
+    }
+
+    /**
+     * Exporter les événements en CSV
+     */
+    public function exportCsv()
+    {
+        $events = $this->getAll();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="evenements.csv"');
+
+        $output = fopen('php://output', 'w');
+        
+        // En-têtes CSV
+        fputcsv($output, ['ID', 'Titre', 'Description', 'Date début', 'Date fin', 'Lieu', 'Créateur'], ';');
+        
+        // Données
+        foreach ($events as $e) {
+            fputcsv($output, [
+                $e['id'],
+                $e['title'],
+                $e['description'],
+                $e['start_date'],
+                $e['end_date'],
+                $e['location'],
+                $e['creator_name']
+            ], ';');
+        }
+
+        fclose($output);
+        exit;
     }
 }
